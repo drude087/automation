@@ -1,71 +1,58 @@
 import cv2
-import mediapipe as mp
-import keyboard
 import time
+import webbrowser
 
-mp_drawing = mp.solutions.drawing_utils
-mp_hands = mp.solutions.hands
+# Load the cascade
+face_cascade = cv2.CascadeClassifier("haarcascade_frontalface_default.xml")
 
-# Initialize the hand detection model
-hands = mp_hands.Hands(static_image_mode=False, max_num_hands =1 , min_detection_confidence=0.9)
+# Start an infinite loop
+while True:
+    # Start the webcam
+    cap = cv2.VideoCapture(0)
 
-# Initialize the video capture
-cap = cv2.VideoCapture(0)
+    # Initialize the face detected flag
+    face_detected = False
 
-while cap.isOpened():
-    success, image = cap.read()
-    if not success:
-        print("Ignoring empty camera frame.")
-        
-        continue
- 
-    # Flip the image horizontally for a more intuitive selfie-view
-    image = cv2.flip(image, 1)
+    # Read a frame from the webcam
+    ret, frame = cap.read()
 
-    # Convert the BGR image to RGB and process it with Mediapipe
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-    results = hands.process(image)
+    # Convert the frame to grayscale
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
-    # Draw hand landmarks on the image
-    if results.multi_hand_landmarks:
-        for hand_landmarks in results.multi_hand_landmarks:
-            mp_drawing.draw_landmarks(image, hand_landmarks, mp_hands.HAND_CONNECTIONS)
+    # Detect faces
+    faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
 
-            # Get the x and y coordinates of the hand landmarks
-            x, y, = [], []
-            for landmark in hand_landmarks.landmark:
-                x.append(landmark.x)
-                y.append(landmark.y)
-                print(x,y)
-            if min(x) < 0.2:
-                keyboard.press('left')
-                keyboard.release('left')
-            elif max(x) > 0.8:
-                keyboard.press('right')
-                keyboard.release('right')
+    # Check if a face is detected
+    if len(faces) > 0:
+        # Open a Google search with a specific text if a face is detected
+        webbrowser.open("https://www.google.com/search?q=face+detected")
+        face_detected = True
 
-            #  Determine whether the hand is up or down in the image
-            if  min(y) < 0.2:
-                keyboard.press('up')
-                keyboard.release('up')
-            elif max(y) > 0.8:
-                keyboard.press('down')
-                keyboard.release('down')
-
-            if min(y)>0.5 and min(y)<0.7:
-                keyboard.press('space')
-                keyboard.release('space')
-                time.sleep(2)
-
-
-
-
-    # Display the image
-    cv2.imshow('MediaPipe Hands', image)
-    if cv2.waitKey(5) & 0xFF == 27:
+    # Check if no face is detected
+    if len(faces) == 0:
+        # Open a Google search with a different text if no face is detected
+        webbrowser.open("https://www.google.com/search?q=face+not+detected")
+        face_detected = False
         break
 
+    # Draw a rectangle around the faces
+    for (x, y, w, h) in faces:
+        cv2.rectangle(frame, (x, y), (x+w, y+h), (0, 255, 0), 2)
 
-# Release resou rces
-cv2.release()
-cv2.destfroyAllWindows()
+    # Display the output
+    cv2.imshow("Live Face Detection", frame)
+
+    # Break the loop if 'q' key is pressed
+    if cv2.waitKey(1) & 0xFF == ord("q"):
+        break
+
+    # Release the webcam
+    cap.release()
+    
+    # Sleep for 10 seconds before checking again
+    time.sleep(10)
+
+# Destroy all windows
+cv2.destroyAllWindows()
+
+
